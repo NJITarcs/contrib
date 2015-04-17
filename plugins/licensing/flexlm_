@@ -50,6 +50,13 @@
 # Revision 1.10 20120625 nassarmu@msi.umn.edu
 # incorporate the rewrite by TSUCHIYA Masatoshi <tsuchiya@namazu.org>
 #
+# Revision 1.20 20150415 mrt@njit.edu
+# Made it easier to capture data on multiple license servers
+# running multiple LM daemons.
+# You can still use this plugin the same way as before, or add flags to the
+# symlink.  Ex: flexlm_MLM_1711_license1.school.edu  OR leaving out the host
+# will result in using the localhost.  
+#
 # Magic markers:
 #%# family=licensing
 #%# capabilities=autoconf
@@ -60,17 +67,29 @@ use strict;
 use warnings;
 
 # What daemon are we going to graph? if none specified exit.
-$PROGRAM_NAME =~ /flexlm_(.+)*$/;
-our $DAEMON = $1;
-exit 2 unless defined $DAEMON;
+my(@parts)=split(/_/,$PROGRAM_NAME);
+defined($parts[1]) or exit 2;
+our $DAEMON = $parts[1];  # 0=flexlm_
+our $LMPORT = defined($parts[2]) ? $parts[2] : '';
+our $LMSERV = defined($parts[3]) ? $parts[3] : '127.0.0.1';
+
+# Was originally going to use a RegEx to capture the variables but ended up using split instead
+# flexlm_([^_]+)(?:_?)([^_]*)(?:_?)([^_]*)
+
 our $munincommand;
 
 # This section is for some optional values, the defaults may work for you
 # if not then i recommend setting these option via plugin-conf.d
 # This would also allow you to theoretically support multiple flexlmds
 # via different license files.
-our $LMSTAT = $ENV{'LMSTAT'} || '/opt/local/flexlm/bin/lmstat';
-our $LMLICFILE = $ENV{'LMLICFILE'} || '/opt/local/flexlm/license/license.dat';;
+our $LMSTAT = $ENV{'LMSTAT'} || '/admin/lmutil lmstat';
+our $LMLICFILE;
+if ( $LMPORT eq '' ) {
+	$LMLICFILE = $ENV{'LMLICFILE'} || '/opt/local/flexlm/license/license.dat';
+}
+else {
+	$LMLICFILE = $ENV{'LMLICFILE'} || sprintf('%s@%s', $LMPORT, $LMSERV);
+}
 
 &struct( feature => { name => '$', cleanname => '$', max => '$', used => '$' } );
 
